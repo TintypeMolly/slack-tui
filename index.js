@@ -74,6 +74,7 @@ var SlackTeam = /** @class */ (function () {
         this.name = "";
         this.channelList = [];
         this.isNotificationSuppressed = false;
+        this.defaultChannel = '';
         this.tui = tui;
         this.name = config[1];
         this.token = config[0];
@@ -115,6 +116,10 @@ var SlackTeam = /** @class */ (function () {
         if (!this.tui.isTeamFocused(this))
             return;
         this.tui.view.channelBox.setItems(channelSelectorList);
+        if (this.defaultChannel) {
+            this.selectChannel(this.defaultChannel);
+            this.defaultChannel = '';
+        }
         this.tui.view.screen.render();
     };
     SlackTeam.prototype.updateChannelList = function () {
@@ -429,20 +434,28 @@ var SlackTUI = /** @class */ (function () {
     function SlackTUI() {
         this.fs = require("fs");
         this.configFile = process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"]
-            + "/.teamlist.json";
+            + "/.slack-tui.json";
         this.tokenList = [];
         this.teamDict = {};
         this.focusedTeam = null;
         this.view = new SlackTUIView(this);
         try {
             var fval = this.fs.readFileSync(this.configFile);
-            this.tokenList = JSON.parse(fval);
+            var configData = JSON.parse(fval);
+            this.tokenList = configData.token;
+            var defaultTeam = configData.defaultTeam;
+            var defaultChannel = configData.defaultChannel;
+            this.refreshTeamList();
+            if (!defaultTeam)
+                return;
+            if (!defaultChannel)
+                return;
+            this.focusTeamByName(defaultTeam, defaultChannel);
         }
         catch (e) {
             this.view.contentBox.log("Error: failed to read " + this.configFile);
             this.view.contentBox.log("Please read https://github.com/hikalium/slack-tui/blob/master/README.md carefully.");
         }
-        this.refreshTeamList();
     }
     SlackTUI.prototype.getCanonicalTeamName = function (str) {
         return str.replace(/\(.*\)/g, "");
@@ -486,10 +499,12 @@ var SlackTUI = /** @class */ (function () {
         this.view.contentBox.setLabel(" " + label + " ");
         this.view.contentBox.render();
     };
-    SlackTUI.prototype.focusTeamByName = function (teamName) {
+    SlackTUI.prototype.focusTeamByName = function (teamName, defaultChannel) {
+        if (defaultChannel === void 0) { defaultChannel = ''; }
         if (!this.teamDict[teamName])
             return;
         this.focusedTeam = this.teamDict[teamName];
+        this.focusedTeam.defaultChannel = defaultChannel;
         this.focusedTeam.updateChannelListView();
         this.requestUpdateUserList(this.focusedTeam);
     };
