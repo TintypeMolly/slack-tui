@@ -99,6 +99,7 @@ class SlackTeam
 	userList: SlackUser[];
 	tui: SlackTUI;
 	isNotificationSuppressed: boolean = false;
+	defaultChannel: string = '';
 	constructor(config, tui: SlackTUI)
 	{
 		this.tui = tui;
@@ -137,6 +138,10 @@ class SlackTeam
 		}	
 		if(!this.tui.isTeamFocused(this)) return;
 		this.tui.view.channelBox.setItems(channelSelectorList);
+		if(this.defaultChannel){
+			this.selectChannel(this.defaultChannel);
+			this.defaultChannel = '';
+		}
 		this.tui.view.screen.render();
 	}
 	private updateChannelList(){
@@ -469,7 +474,7 @@ class SlackTUI
 	fs = require("fs");
 	configFile = 
 		process.env[process.platform == "win32" ? "USERPROFILE" : "HOME"] 
-		+ "/.teamlist.json";
+		+ "/.slack-tui.json";
 	tokenList = [];
 	teamDict: {[key: string]: SlackTeam} = {};
 	private focusedTeam: SlackTeam = null;
@@ -478,14 +483,20 @@ class SlackTUI
 		this.view = new SlackTUIView(this);
 		try{
 			var fval = this.fs.readFileSync(this.configFile);
-			this.tokenList = JSON.parse(fval);
+			var configData = JSON.parse(fval);
+			this.tokenList = configData.token;
+			var defaultTeam = configData.defaultTeam;
+			var defaultChannel = configData.defaultChannel;
+			this.refreshTeamList();
+			if(!defaultTeam) return;
+			if(!defaultChannel) return;
+			this.focusTeamByName(defaultTeam, defaultChannel);
 		} catch(e){
 			this.view.contentBox.log(
 				"Error: failed to read " + this.configFile);
 			this.view.contentBox.log(
 				"Please read https://github.com/hikalium/slack-tui/blob/master/README.md carefully.");
 		}
-		this.refreshTeamList();
 	}
 	getCanonicalTeamName(str: string)
 	{
@@ -524,9 +535,10 @@ class SlackTUI
 		this.view.contentBox.setLabel(" " + label + " ");
 		this.view.contentBox.render();
 	}
-	focusTeamByName(teamName: string){
+	focusTeamByName(teamName: string, defaultChannel = ''){
 		if(!this.teamDict[teamName]) return;
 		this.focusedTeam = this.teamDict[teamName];
+		this.focusedTeam.defaultChannel = defaultChannel;
 		this.focusedTeam.updateChannelListView();
 		this.requestUpdateUserList(this.focusedTeam);
 	}
