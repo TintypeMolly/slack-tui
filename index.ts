@@ -209,6 +209,10 @@ class SlackTeam
 		// APIのchat.postMessageを使ってメッセージを送信する
 		this.connection.reqAPI("chat.postMessage", data);
 	}
+	private decodeSpecialChars(text: string): string
+	{
+		return text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+	}
 	updateContent(id, name_for_id){
 		var view = this.tui.view;
 		var connection = this.connection;
@@ -223,7 +227,7 @@ class SlackTeam
 			view.contentBox.setContent("");
 			var messages = data.messages.map((e) => {
 				var head = (this.getUserName(e.user) + "          ").substr(0, 10);
-				return head + ":" + e.text;
+				return head + ":" + this.decodeSpecialChars(e.text);
 			}).reverse();
 			view.contentBox.log(messages.join("\n"));
 		});
