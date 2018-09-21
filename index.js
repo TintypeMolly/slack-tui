@@ -201,6 +201,9 @@ var SlackTeam = /** @class */ (function () {
         // APIのchat.postMessageを使ってメッセージを送信する
         this.connection.reqAPI("chat.postMessage", data);
     };
+    SlackTeam.prototype.decodeSpecialChars = function (text) {
+        return text.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>');
+    };
     SlackTeam.prototype.updateContent = function (id, name_for_id) {
         var _this = this;
         var view = this.tui.view;
@@ -216,7 +219,7 @@ var SlackTeam = /** @class */ (function () {
             view.contentBox.setContent("");
             var messages = data.messages.map(function (e) {
                 var head = (_this.getUserName(e.user) + "          ").substr(0, 10);
-                return head + ":" + e.text;
+                return head + ":" + _this.decodeSpecialChars(e.text);
             }).reverse();
             view.contentBox.log(messages.join("\n"));
         });
